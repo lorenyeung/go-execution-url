@@ -3,7 +3,6 @@ package helpers
 import (
 	"flag"
 	"fmt"
-	"os/user"
 	"runtime"
 	"strings"
 
@@ -74,21 +73,12 @@ type Flags struct {
 
 //SetFlags function
 func SetFlags() Flags {
-
-	usr, err := user.Current()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	//custom file/folder names
-	configPath := usr.HomeDir + "/.lorenygo/downloader/"
-
 	var flags Flags
 	flag.StringVar(&flags.LogLevelVar, "log", "INFO", "Order of Severity: TRACE, DEBUG, INFO, WARN, ERROR, FATAL, PANIC")
 	flag.StringVar(&flags.ExecutionIdVar, "exe", "", "Execution ID")
-	flag.StringVar(&flags.AccountIdVar, "acc", configPath, "Account ID")
-	flag.StringVar(&flags.OrgIdVar, "org", "", "Organisation ID")
-	flag.StringVar(&flags.ProjectIdVar, "pro", "", "Project ID")
+	flag.StringVar(&flags.AccountIdVar, "acc", "", "Account ID")
+	flag.StringVar(&flags.OrgIdVar, "org", "default", "Organisation ID")
+	flag.StringVar(&flags.ProjectIdVar, "pro", "default", "Project ID")
 	flag.StringVar(&flags.PipelineIdVar, "pip", "", "Pipeline ID")
 	flag.StringVar(&flags.ApiKeyVar, "key", "", "API Key")
 	flag.Parse()

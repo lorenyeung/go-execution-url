@@ -150,12 +150,22 @@ func main() {
 
 		//print data
 		count := 0
+		line := []string{strings.Repeat("-", longestName+38)}
+		printStage := true
+		fmt.Printf("%3s | %-*.*s | %-*.*s | %6s\n", "No.", longestName, longestName, "Step Name", 13, 13, "End time", "Execution URL")
 		for e := SortedData.Front(); e != nil; e = e.Next() {
 			v := e.Value.(DataArray)
+
 			if v.NodeMapObj.Name == v.LayoutNodeMapObj.Name {
-				fmt.Println("-------\nEnd Stage", v.LayoutNodeMapObj.Name, "\n-------")
+				printStage = true
 			} else {
-				fmt.Printf("%2d %-*.*s %6s\n", count, longestName, longestName, v.NodeMapObj.Name, termlink.Link("Execution", v.FinalURL))
+				if printStage {
+
+					fmt.Println(strings.Join(line, ""), "\nStage:", v.LayoutNodeMapObj.Name)
+					fmt.Println(strings.Join(line, ""))
+					printStage = false
+				}
+				fmt.Printf("%3d | %-*.*s | %13d | %6s\n", count, longestName, longestName, v.NodeMapObj.Name, v.NodeMapObj.EndTs, termlink.Link("Execution", v.FinalURL))
 				count++
 			}
 		}

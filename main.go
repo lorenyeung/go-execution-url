@@ -1,6 +1,7 @@
 package main
 
 import (
+	"container/list"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -8,6 +9,7 @@ import (
 
 	"github.com/lorenyeung/go-execution-url/auth"
 	"github.com/lorenyeung/go-execution-url/helpers"
+	"github.com/savioxavier/termlink"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -46,6 +48,13 @@ type NodeMap struct {
 	Uuid       string `json:"uuid"`
 	BaseFqn    string `json:"baseFqn"`
 	Status     string `json:"status"`
+	EndTs      int    `json:"endTs"`
+}
+
+type DataArray struct {
+	NodeMapObj       NodeMap
+	LayoutNodeMapObj LayoutNodeMap
+	FinalURL         string
 }
 
 func printVersion() {
@@ -81,6 +90,11 @@ func main() {
 			log.Panic(err)
 		}
 
+		//arrayData := []DataArray{}
+		// sort by time
+		SortedData := list.New()
+		longestName := 0
+
 		for key, value := range executionData.DataStructObj.ExecutionGraphObj.NodeMapObj {
 			stepBody, _ := json.Marshal(value)
 			var NodeMapObj NodeMap
@@ -101,11 +115,48 @@ func main() {
 					}
 
 					if strings.Contains(NodeMapObj.BaseFqn, "pipeline.stages."+LayoutNodeMapObj.NodeIdentifier) {
-						fmt.Println(LayoutNodeMapObj.Name, "|", NodeMapObj.Name, "|", NodeMapObj.Status, "|", LayoutNodeMapObj.NodeIdentifier, "|", NodeMapObj.Identifier)
-						fmt.Println("https://app.harness.io/ng/#/account/" + flags.AccountIdVar + "/ci/orgs/" + flags.OrgIdVar + "/projects/" + flags.ProjectIdVar + "/pipelines/" + flags.PipelineIdVar + "/executions/" + flags.ExecutionIdVar + "/pipeline?storeType=" + executionData.DataStructObj.PipelineExecutionSummaryObj.StoreType + "&stage=" + key2 + "&step=" + key + "&childStage=&stageExecId=")
+						log.Debug("unsorted object:", LayoutNodeMapObj.Name, "|", NodeMapObj.Name, "|", NodeMapObj.Status, "|", LayoutNodeMapObj.NodeIdentifier, "|", NodeMapObj.Identifier, NodeMapObj.EndTs)
+						//TODO childstage and stageExecId
+						finalurl := "https://app.harness.io/ng/#/account/" + flags.AccountIdVar + "/ci/orgs/" + flags.OrgIdVar + "/projects/" + flags.ProjectIdVar + "/pipelines/" + flags.PipelineIdVar + "/executions/" + flags.ExecutionIdVar + "/pipeline?storeType=" + executionData.DataStructObj.PipelineExecutionSummaryObj.StoreType + "&stage=" + key2 + "&step=" + key + "&childStage=&stageExecId="
+						if NodeMapObj.Name != "Execution" {
+							if len(NodeMapObj.Name) > longestName {
+								longestName = len(NodeMapObj.Name)
+							}
+							object := DataArray{NodeMapObj, LayoutNodeMapObj, finalurl}
+							if SortedData.Len() == 0 {
+								SortedData.PushFront(object)
+								log.Debug("first date push", object.NodeMapObj.EndTs)
+							} else {
+								//sort data and insert according to epoch of end timestamp
+								for e := SortedData.Front(); e != nil; e = e.Next() {
+									v := e.Value.(DataArray)
+									if object.NodeMapObj.EndTs < v.NodeMapObj.EndTs {
+										SortedData.InsertBefore(object, e)
+										break
+									} else {
+										if e == SortedData.Back() {
+											SortedData.PushBack(object)
+											break
+										}
+									}
+								}
+							}
+						}
 						break
 					}
 				}
+			}
+		}
+
+		//print data
+		count := 0
+		for e := SortedData.Front(); e != nil; e = e.Next() {
+			v := e.Value.(DataArray)
+			if v.NodeMapObj.Name == v.LayoutNodeMapObj.Name {
+				fmt.Println("-------\nEnd Stage", v.LayoutNodeMapObj.Name, "\n-------")
+			} else {
+				fmt.Printf("%2d %-*.*s %6s\n", count, longestName, longestName, v.NodeMapObj.Name, termlink.Link("Execution", v.FinalURL))
+				count++
 			}
 		}
 	}

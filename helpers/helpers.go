@@ -68,8 +68,8 @@ func Check(e error, panicCheck bool, logs string, trace TraceData) {
 
 //Flags struct
 type Flags struct {
-	LogLevelVar, ExecutionIdVar, AccountIdVar, OrgIdVar, ProjectIdVar, PipelineIdVar, ApiKeyVar, OutputVar string
-	ForceLinkVar                                                                                           bool
+	LogLevelVar, ExecutionIdVar, AccountIdVar, OrgIdVar, ProjectIdVar, PipelineIdVar, ApiKeyVar, OutputVar, OutfileVar string
+	ForceLinkVar, ShowIdsVar                                                                                           bool
 }
 
 //SetFlags function
@@ -83,7 +83,9 @@ func SetFlags() Flags {
 	flag.StringVar(&flags.PipelineIdVar, "pip", "", "Pipeline ID")
 	flag.StringVar(&flags.ApiKeyVar, "key", "", "API Key")
 	flag.StringVar(&flags.OutputVar, "output", "table", "Output format: table, json")
+	flag.StringVar(&flags.OutfileVar, "outfile", "", "optionally write results to a file")
 	flag.BoolVar(&flags.ForceLinkVar, "forcelink", false, "Force link print")
+	flag.BoolVar(&flags.ShowIdsVar, "showid", false, "Show Harness IDs for steps and stages")
 	flag.Parse()
 	return flags
 }

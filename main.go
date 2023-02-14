@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
+	"os"
 	"strings"
 
 	"github.com/lorenyeung/go-execution-url/auth"
@@ -150,12 +152,22 @@ func main() {
 
 		//print data
 		count := 0
-		line := []string{strings.Repeat("-", longestName+38)}
+		statuslen := 12
+		timelen := 13
+		if flags.ShowIdsVar {
+			longestName = longestName*2 + 7
+		}
+		totallen := longestName + statuslen + timelen + 28
+		line := []string{strings.Repeat("-", totallen)}
 		printStage := true
+		var outfileData []byte
+		var outfileTable string
 
 		if flags.OutputVar == "table" {
 
-			fmt.Printf("%3s | %-*.*s | %-*.*s | %-*.*s | %6s\n", "No.", longestName, longestName, "Step Name", 10, 10, "Status", 13, 13, "End time", "Execution URL")
+			header := fmt.Sprintf("%3s | %-*.*s | %-*.*s | %-*.*s | %6s\n", "No.", longestName, longestName, "Step", statuslen, statuslen, "Status", timelen, timelen, "End time", "Execution URL")
+			io.WriteString(os.Stdout, header)
+			outfileTable = header
 			for e := SortedData.Front(); e != nil; e = e.Next() {
 				v := e.Value.(DataArray)
 
@@ -163,37 +175,50 @@ func main() {
 					printStage = true
 				} else {
 					if printStage {
-
-						fmt.Println(strings.Join(line, ""), "\nStage:", v.LayoutNodeMapObj.Name)
-						fmt.Println(strings.Join(line, ""))
+						stageId := ""
+						if flags.ShowIdsVar {
+							stageId = "(id:" + v.LayoutNodeMapObj.NodeIdentifier + ")"
+						}
+						stage := fmt.Sprintf("%*s\nStage: %-s %-s\n%*s\n", totallen, strings.Join(line, ""), v.LayoutNodeMapObj.Name, stageId, totallen, strings.Join(line, ""))
+						io.WriteString(os.Stdout, stage)
+						outfileTable = outfileTable + stage
 						printStage = false
 					}
-					fmt.Printf("%3d | %-*.*s | %-*.*s | %13d | %6s\n", count, longestName, longestName, v.NodeMapObj.Name, 10, 10, v.NodeMapObj.Status, v.NodeMapObj.EndTs, termlink.Link("Execution", v.FinalURL, flags.ForceLinkVar))
+					stepId := ""
+					if flags.ShowIdsVar {
+						stepId = "(id:" + v.NodeMapObj.Identifier + ")"
+					}
+					tableData := fmt.Sprintf("%3d | %-*.*s | %-*.*s | %*.*d | %6s\n", count, longestName, longestName, v.NodeMapObj.Name+" "+stepId, statuslen, statuslen, v.NodeMapObj.Status, timelen, timelen, v.NodeMapObj.EndTs, termlink.Link("Execution", v.FinalURL, flags.ForceLinkVar))
+					io.WriteString(os.Stdout, tableData)
+					outfileTable = outfileTable + tableData
 					count++
 				}
 			}
+			outfileData = []byte(outfileTable)
 		}
 		if flags.OutputVar == "json" {
+			jsonDataRaw := []DataArray{}
 			for e := SortedData.Front(); e != nil; e = e.Next() {
 				v := e.Value.(DataArray)
-
 				if v.NodeMapObj.Name == v.LayoutNodeMapObj.Name {
-					printStage = true
 				} else {
-					if printStage {
-
-						fmt.Println(strings.Join(line, ""), "\nStage:", v.LayoutNodeMapObj.Name)
-						fmt.Println(strings.Join(line, ""))
-						printStage = false
-					}
-					data, err = json.Marshal(v)
-					if err != nil {
-						log.Error(err)
-					} else {
-						fmt.Println(string(data))
-					}
-					count++
+					jsonDataRaw = append(jsonDataRaw, v)
 				}
+			}
+			jsondata, err := json.Marshal(jsonDataRaw)
+			if err != nil {
+				log.Error(err)
+			} else {
+				fmt.Println(string(jsondata))
+				outfileData = jsondata
+			}
+
+		}
+
+		if flags.OutfileVar != "" {
+			err := os.WriteFile(flags.OutfileVar, outfileData, 0644)
+			if err != nil {
+				log.Error(err)
 			}
 		}
 	}

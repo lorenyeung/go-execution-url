@@ -2,12 +2,15 @@ package auth
 
 import (
 	"bytes"
+	"container/list"
+	"encoding/json"
 	"io"
 	"io/ioutil"
 	"mime/multipart"
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/lorenyeung/go-execution-url/helpers"
@@ -119,4 +122,80 @@ func GetRestAPI(method string, auth bool, urlInput, userName, apiKey, providedfi
 		}
 	}
 	return nil, 0, nil
+}
+
+func GetData(flags helpers.Flags, SortedData *list.List) (longestName int) {
+	url := "https://app.harness.io/gateway/pipeline/api/pipelines/execution/v2/" + flags.ExecutionIdVar + "?accountIdentifier=" + flags.AccountIdVar + "&orgIdentifier=" + flags.OrgIdVar + "&projectIdentifier=" + flags.ProjectIdVar + "&renderFullBottomGraph=true"
+	m := map[string]string{
+		"x-api-key": flags.ApiKeyVar,
+	}
+	longestName = 0
+	data, respcode, _ := GetRestAPI("GET", false, url, "", "", "", m, 0)
+	if respcode != 200 {
+		log.Panic("error")
+	} else {
+		var executionData helpers.RawData
+		err := json.Unmarshal(data, &executionData)
+		if err != nil {
+			log.Panic(err)
+		}
+
+		for key, value := range executionData.DataStructObj.ExecutionGraphObj.NodeMapObj {
+			stepBody, _ := json.Marshal(value)
+			var NodeMapObj helpers.NodeMap
+			err = json.Unmarshal(stepBody, &NodeMapObj)
+			if err != nil {
+				log.Panic(err)
+			}
+
+			for key2, value2 := range executionData.DataStructObj.PipelineExecutionSummaryObj.LayoutNodeMapObj {
+
+				//skip rollback stages
+				if !strings.Contains(key2, "_rollbackStage") {
+					stageBody, _ := json.Marshal(value2)
+					var LayoutNodeMapObj helpers.LayoutNodeMap
+					err = json.Unmarshal(stageBody, &LayoutNodeMapObj)
+					if err != nil {
+						log.Panic(err)
+					}
+
+					if strings.Contains(NodeMapObj.BaseFqn, "pipeline.stages."+LayoutNodeMapObj.NodeIdentifier) {
+						log.Debug("unsorted object:", LayoutNodeMapObj.Name, "|", NodeMapObj.Name, "|", NodeMapObj.Status, "|", LayoutNodeMapObj.NodeIdentifier, "|", NodeMapObj.Identifier, NodeMapObj.EndTs)
+						//TODO childstage and stageExecId
+						finalurl := "https://app.harness.io/ng/#/account/" + flags.AccountIdVar + "/ci/orgs/" + flags.OrgIdVar + "/projects/" + flags.ProjectIdVar + "/pipelines/" + flags.PipelineIdVar + "/executions/" + flags.ExecutionIdVar + "/pipeline?storeType=" + executionData.DataStructObj.PipelineExecutionSummaryObj.StoreType + "&stage=" + key2 + "&step=" + key + "&childStage=&stageExecId="
+						if NodeMapObj.Name != "Execution" {
+							if len(NodeMapObj.Name) > longestName {
+								longestName = len(NodeMapObj.Name)
+								log.Debug("update longestName:", longestName)
+							}
+							object := helpers.DataArray{NodeMapObj, LayoutNodeMapObj, finalurl}
+							if SortedData.Len() == 0 {
+								SortedData.PushFront(object)
+								log.Debug("first date push", object.NodeMapObj.EndTs)
+							} else {
+								//sort data and insert according to epoch of end timestamp
+								for e := SortedData.Front(); e != nil; e = e.Next() {
+									v := e.Value.(helpers.DataArray)
+									if object.NodeMapObj.EndTs < v.NodeMapObj.EndTs {
+										SortedData.InsertBefore(object, e)
+										log.Debug("insert before")
+										break
+									} else {
+										if e == SortedData.Back() {
+											SortedData.PushBack(object)
+											log.Debug("insert after")
+											break
+										}
+									}
+								}
+							}
+						}
+						break
+					}
+				}
+			}
+		}
+	}
+	log.Debug("Final max step length:", longestName)
+	return longestName
 }

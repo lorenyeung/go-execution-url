@@ -152,21 +152,48 @@ func main() {
 		count := 0
 		line := []string{strings.Repeat("-", longestName+38)}
 		printStage := true
-		fmt.Printf("%3s | %-*.*s | %-*.*s | %6s\n", "No.", longestName, longestName, "Step Name", 13, 13, "End time", "Execution URL")
-		for e := SortedData.Front(); e != nil; e = e.Next() {
-			v := e.Value.(DataArray)
 
-			if v.NodeMapObj.Name == v.LayoutNodeMapObj.Name {
-				printStage = true
-			} else {
-				if printStage {
+		if flags.OutputVar == "table" {
 
-					fmt.Println(strings.Join(line, ""), "\nStage:", v.LayoutNodeMapObj.Name)
-					fmt.Println(strings.Join(line, ""))
-					printStage = false
+			fmt.Printf("%3s | %-*.*s | %-*.*s | %6s\n", "No.", longestName, longestName, "Step Name", 13, 13, "End time", "Execution URL")
+			for e := SortedData.Front(); e != nil; e = e.Next() {
+				v := e.Value.(DataArray)
+
+				if v.NodeMapObj.Name == v.LayoutNodeMapObj.Name {
+					printStage = true
+				} else {
+					if printStage {
+
+						fmt.Println(strings.Join(line, ""), "\nStage:", v.LayoutNodeMapObj.Name)
+						fmt.Println(strings.Join(line, ""))
+						printStage = false
+					}
+					fmt.Printf("%3d | %-*.*s | %13d | %6s\n", count, longestName, longestName, v.NodeMapObj.Name, v.NodeMapObj.EndTs, termlink.Link("Execution", v.FinalURL, flags.ForceLinkVar))
+					count++
 				}
-				fmt.Printf("%3d | %-*.*s | %13d | %6s\n", count, longestName, longestName, v.NodeMapObj.Name, v.NodeMapObj.EndTs, termlink.Link("Execution", v.FinalURL))
-				count++
+			}
+		}
+		if flags.OutputVar == "json" {
+			for e := SortedData.Front(); e != nil; e = e.Next() {
+				v := e.Value.(DataArray)
+
+				if v.NodeMapObj.Name == v.LayoutNodeMapObj.Name {
+					printStage = true
+				} else {
+					if printStage {
+
+						fmt.Println(strings.Join(line, ""), "\nStage:", v.LayoutNodeMapObj.Name)
+						fmt.Println(strings.Join(line, ""))
+						printStage = false
+					}
+					data, err = json.Marshal(v)
+					if err != nil {
+						log.Error(err)
+					} else {
+						fmt.Println(string(data))
+					}
+					count++
+				}
 			}
 		}
 	}

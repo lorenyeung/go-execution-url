@@ -35,7 +35,6 @@ func main() {
 	}
 	SortedData := list.New()
 	longestName := auth.GetData(flags, SortedData)
-	fmt.Println(longestName)
 	outfileData := helpers.PrintData(longestName, flags, SortedData)
 	if flags.OutfileVar != "" {
 		err := os.WriteFile(flags.OutfileVar, outfileData, 0644)

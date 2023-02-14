@@ -56,6 +56,7 @@ echo "Looks good?"
                 echo $body > release.json 
                 curl -u $GIT_USER:$GIT_TOKEN -XPOST "https://api.github.com/repos/lorenyeung/$GIT_REPO/releases" -H "Content-Type: application/json" -T release.json -o release-response.json
                 rm release.json
+                make
                 BINARIES=("$BINARY_PREFIX-darwin-x64" "$BINARY_PREFIX-linux-x64")
                 ASSET_URL=$(jq -r '.upload_url' release-response.json)
                 edited=$(echo $ASSET_URL | sed 's/{?name,label}//')

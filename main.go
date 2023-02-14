@@ -155,7 +155,7 @@ func main() {
 
 		if flags.OutputVar == "table" {
 
-			fmt.Printf("%3s | %-*.*s | %-*.*s | %6s\n", "No.", longestName, longestName, "Step Name", 13, 13, "End time", "Execution URL")
+			fmt.Printf("%3s | %-*.*s | %-*.*s | %-*.*s | %6s\n", "No.", longestName, longestName, "Step Name", 10, 10, "Status", 13, 13, "End time", "Execution URL")
 			for e := SortedData.Front(); e != nil; e = e.Next() {
 				v := e.Value.(DataArray)
 
@@ -168,7 +168,7 @@ func main() {
 						fmt.Println(strings.Join(line, ""))
 						printStage = false
 					}
-					fmt.Printf("%3d | %-*.*s | %13d | %6s\n", count, longestName, longestName, v.NodeMapObj.Name, v.NodeMapObj.EndTs, termlink.Link("Execution", v.FinalURL, flags.ForceLinkVar))
+					fmt.Printf("%3d | %-*.*s | %-*.*s | %13d | %6s\n", count, longestName, longestName, v.NodeMapObj.Name, 10, 10, v.NodeMapObj.Status, v.NodeMapObj.EndTs, termlink.Link("Execution", v.FinalURL, flags.ForceLinkVar))
 					count++
 				}
 			}
